@@ -1,6 +1,6 @@
 {
   "name": "mapd3",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "description": "A fast chart library for the fastest DB",
   "main": "dist/mapd3.js",
   "contributors": [
@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "styles": "grunt lint && grunt sass && grunt cssmin",
-    "docs": "documentation build -f \"html\" examples/examples.js -o doc",
+    "docs:build": "documentation build -f \"html\" examples/examples.js -o doc",
+    "docs:serve": "documentation serve --watch examples/examples.js -o doc",
     "prod": "webpack --mode=prod --watch",
     "dev": "webpack --mode=dev --watch",
     "release": "npm run prod && grunt release:patch",

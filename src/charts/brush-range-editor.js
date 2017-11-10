@@ -13,7 +13,9 @@ export default function BrushRangeEditor (_container) {
       left: 70
     },
     width: 800,
-    height: 500
+    height: 500,
+    keyType: "time",
+    rangeFormat: "%b %d, %Y"
   }
 
   const cache = {
@@ -24,7 +26,12 @@ export default function BrushRangeEditor (_container) {
     rangeMin: null,
     rangeMax: null,
     chartWidth: null,
-    chartHeight: null
+    chartHeight: null,
+    isEnabled: true
+  }
+
+  let scales = {
+    xScale: null
   }
 
   // events
@@ -66,22 +73,29 @@ export default function BrushRangeEditor (_container) {
         .style("float", "right")
     }
 
-    cache.inputMin.text(cache.rangeMin || "")
-    cache.inputMax.text(cache.rangeMax || "")
+    const domain = scales.xScale.domain()
+    let rangeMin = cache.rangeMin === null ? domain[0] : cache.rangeMin
+    let rangeMax = cache.rangeMax === null ? domain[1] : cache.rangeMax
+    if (config.keyType === "time") {
+      const format = d3.utcFormat(config.rangeFormat)
+      rangeMin = format(new Date(rangeMin))
+      rangeMax = format(new Date(rangeMax))
+    } else {
+      const format = d3.format(config.rangeFormat)
+      rangeMin = format(rangeMin)
+      rangeMax = format(rangeMax)
+    }
+
+    cache.inputMin.text(rangeMin)
+    cache.inputMax.text(rangeMax)
   }
 
   function drawRangeEditor () {
-    buildSVG()
-    return this
-  }
-
-  function on (...args) {
-    dispatcher.on(...args)
-    return this
-  }
-
-  function setConfig (_config) {
-    config = override(config, _config)
+    if (cache.isEnabled) {
+      buildSVG()
+    } else {
+      destroy()
+    }
     return this
   }
 
@@ -95,11 +109,40 @@ export default function BrushRangeEditor (_container) {
     return this
   }
 
+  function setVisibility (_shouldBeVisible) {
+    cache.isEnabled = _shouldBeVisible
+    drawRangeEditor()
+    return this
+  }
+
+  function on (...args) {
+    dispatcher.on(...args)
+    return this
+  }
+
+  function setConfig (_config) {
+    config = override(config, _config)
+    return this
+  }
+
+  function setScales (_scales) {
+    scales = override(scales, _scales)
+    return this
+  }
+
+  function destroy () {
+    if (cache.root) {
+      cache.root.remove()
+    }
+  }
+
   return {
     on,
     setConfig,
     drawRangeEditor,
     setRangeMin,
-    setRangeMax
+    setRangeMax,
+    setScales,
+    setVisibility
   }
 }

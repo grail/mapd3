@@ -2,10 +2,11 @@ import * as d3 from "./helpers/d3-service"
 
 import {colors} from "./helpers/colors"
 import {keys} from "./helpers/constants"
-import {cloneData, invertScale, sortData, override, throttle, rebind} from "./helpers/common"
+import {cloneData, override, throttle, rebind} from "./helpers/common"
 
 import Scale from "./scale"
 import Line from "./line"
+import Bar from "./bar"
 import Axis from "./axis"
 import Tooltip from "./tooltip"
 import Legend from "./legend"
@@ -15,6 +16,7 @@ import Binning from "./binning"
 import DomainEditor from "./domain-editor"
 import BrushRangeEditor from "./brush-range-editor"
 import Label from "./label"
+import DataManager from "./data-manager"
 
 export default function Chart (_container) {
 
@@ -39,6 +41,9 @@ export default function Chart (_container) {
     // scale
     colorSchema: colors.mapdColors.map((d) => ({value: d})),
     defaultColor: "skyblue",
+    xDomain: "auto",
+    yDomain: "auto",
+    y2Domain: "auto",
 
     // axis
     tickPadding: 5,
@@ -46,8 +51,8 @@ export default function Chart (_container) {
     yAxisFormat: ".2f",
     y2AxisFormat: ".2f",
     tickSizes: 8,
-    yTicks: 5,
-    y2Ticks: 5,
+    yTicks: "auto",
+    y2Ticks: "auto",
     xTickSkip: 0,
     grid: null,
     axisTransitionDuration: 0,
@@ -71,19 +76,28 @@ export default function Chart (_container) {
     legendXPosition: "auto",
     legendYPosition: "auto",
     legendTitle: "",
+    legendIsEnabled: true,
 
     // binning
-    binningReolution: "1mo",
+    binningResolution: "1mo",
     binningIsAuto: true,
+    binningToggles: ["10y", "1y", "1q", "1mo"],
+    binningIsEnabled: true,
 
     // domain
-    xDomain: null,
-    yDomain: null,
-    y2Domain: null,
+    domainEditorIsEnabled: true,
+    xDomainEditorFormat: "%b %d, %Y",
+    yDomainEditorFormat: ".2f",
+    y2DomainEditorFormat: ".2f",
 
     // brush range
     brushRangeMin: null,
     brushRangeMax: null,
+    rangeFormat: "%b %d, %Y",
+    brushRangeIsEnabled: true,
+
+    // brush
+    brushIsEnabled: true,
 
     // label
     xLabel: "",
@@ -123,12 +137,9 @@ export default function Chart (_container) {
   const components = {}
   const eventCollector = {}
 
-  // accessors
-  const getKey = (d) => d[keys.DATA]
-  const getID = (d) => d[keys.ID]
-
   // events
   const dispatcher = d3.dispatch("mouseOverPanel", "mouseOutPanel", "mouseMovePanel")
+  const dataManager = DataManager()
 
   function render () {
     buildSVG()
@@ -141,10 +152,10 @@ export default function Chart (_container) {
   }
 
   function buildSVG () {
-    const w = config.width || cache.container.clientWidth
-    const h = config.height || cache.container.clientHeight
-    cache.chartWidth = w - config.margin.left - config.margin.right
-    cache.chartHeight = h - config.margin.top - config.margin.bottom
+    const w = config.width === "auto" ? cache.container.clientWidth : config.width
+    const h = config.height === "auto" ? cache.container.clientHeight : config.height
+    cache.chartWidth = Math.max(w - config.margin.left - config.margin.right, 0)
+    cache.chartHeight = Math.max(h - config.margin.top - config.margin.bottom, 0)
 
     if (!cache.svg) {
       const template = `<div class="mapd3 mapd3-container">
@@ -176,6 +187,7 @@ export default function Chart (_container) {
         scale: Scale(),
         axis: Axis(cache.chart),
         line: Line(cache.panel),
+        bar: Bar(cache.panel),
         tooltip: Tooltip(cache.container),
         legend: Legend(cache.container),
         brush: Brush(cache.panel),
@@ -202,8 +214,8 @@ export default function Chart (_container) {
       .attr("height", config.height)
 
     cache.headerGroup
-      .style("width", cache.chartWidth)
-      .style("left", config.margin.left)
+      .style("width", `${cache.chartWidth}px`)
+      .style("left", `${config.margin.left}px`)
 
     cache.panel
       .attr("transform", `translate(${config.margin.left},${config.margin.top})`)
@@ -234,10 +246,17 @@ export default function Chart (_container) {
       .setData(dataObject)
       .drawMarks()
 
+    components.bar
+      .setConfig(config)
+      .setScales(scales)
+      .setData(dataObject)
+      .drawMarks()
+
     components.tooltip
       .setConfig(config)
       .setScales(scales)
       .bindEvents(dispatcher)
+      .setVisibility(config.tooltipIsEnabled)
 
     const legendContent = dataObject.dataBySeries
         .map((d) => ({
@@ -254,12 +273,14 @@ export default function Chart (_container) {
       .setXPosition(config.legendXPosition)
       .setYPosition(config.legendYPosition)
       .drawTooltip()
-      .show()
+      .setVisibility(config.legendIsEnabled)
 
     components.brush
       .setConfig(config)
       .setScales(scales)
       .setData(dataObject)
+      .setBrushExtent([config.brushRangeMin, config.brushRangeMax])
+      .setVisibility(config.brushIsEnabled)
       .drawBrush()
 
     components.hover
@@ -270,22 +291,27 @@ export default function Chart (_container) {
 
     components.binning
       .setConfig(config)
-      .setBinning(config.binningReolution)
+      .setBinning(config.binningResolution)
       .setAuto(config.binningIsAuto)
       .drawBinning()
+      .setVisibility(config.binningIsEnabled)
 
     components.domainEditor
       .setConfig(config)
+      .setScales(scales)
       .setXDomain(config.xDomain)
       .setYDomain(config.yDomain)
       .setY2Domain(config.y2Domain)
       .drawDomainEditor()
+      .setVisibility(config.domainEditorIsEnabled)
 
     components.brushRangeEditor
       .setConfig(config)
+      .setScales(scales)
       .setRangeMin(config.brushRangeMin)
       .setRangeMax(config.brushRangeMax)
       .drawRangeEditor()
+      .setVisibility(config.brushRangeIsEnabled)
 
     components.label
       .setConfig(config)
@@ -300,81 +326,11 @@ export default function Chart (_container) {
 
   function setData (_data) {
     dataObject.data = cloneData(_data[keys.SERIES])
-    const cleanedData = cleanData(_data)
+    const cleanedData = dataManager.cleanData(_data, config.keyType)
     Object.assign(dataObject, cleanedData)
 
     render()
     return this
-  }
-
-  function cleanData (_data) {
-    const dataBySeries = cloneData(_data[keys.SERIES])
-    const flatData = []
-
-    // Normalize dataBySeries
-    dataBySeries.forEach((serie) => {
-      serie[keys.VALUES] = sortData(serie[keys.VALUES], config.keyType)
-      serie[keys.VALUES].forEach((d) => {
-        d[keys.DATA] = config.keyType === "time" ? new Date(d[keys.DATA]) : d[keys.DATA]
-        d[keys.VALUE] = Number(d[keys.VALUE])
-      })
-    })
-
-    dataBySeries.forEach((serie) => {
-      serie[keys.VALUES].forEach((d) => {
-        const dataPoint = {}
-        dataPoint[keys.LABEL] = serie[keys.LABEL]
-        dataPoint[keys.GROUP] = serie[keys.GROUP]
-        dataPoint[keys.ID] = serie[keys.ID]
-        dataPoint[keys.DATA] = config.keyType === "time" ? new Date(d[keys.DATA]) : d[keys.DATA]
-        dataPoint[keys.VALUE] = d[keys.VALUE]
-        flatData.push(dataPoint)
-      })
-    })
-
-    const flatDataSorted = sortData(flatData, config.keyType)
-
-    const dataByKey = d3.nest()
-      .key(getKey)
-      .entries(flatDataSorted)
-      .map((d) => {
-        const dataPoint = {}
-        dataPoint[keys.DATA] = config.keyType === "time" ? new Date(d.key) : d.key
-        dataPoint[keys.SERIES] = d.values
-        return dataPoint
-      })
-
-    const groupKeys = {}
-    dataBySeries.forEach((d) => {
-      if (!groupKeys[d[keys.GROUP]]) {
-        groupKeys[d[keys.GROUP]] = []
-      }
-      groupKeys[d[keys.GROUP]].push(d[keys.ID])
-    })
-
-    let stackData = null
-    let stack = null
-
-    if (config.chartType === "stackedBar" || config.chartType === "stackedArea") {
-      stackData = dataByKey
-          .map((d) => {
-            const points = {
-              key: d[keys.DATA]
-            }
-            d.series.forEach((dB) => {
-              points[dB[keys.ID]] = dB[keys.VALUE]
-            })
-
-            return points
-          })
-
-      stack = d3.stack()
-          .keys(dataBySeries.map(getID))
-          .order(d3.stackOrderNone)
-          .offset(d3.stackOffsetNone)
-    }
-
-    return {dataBySeries, dataByKey, stack, stackData, flatDataSorted, groupKeys}
   }
 
   function triggerIntroAnimation () {
@@ -394,26 +350,6 @@ export default function Chart (_container) {
     }
   }
 
-  function getNearestDataPoint (_mouseX) {
-    const keyFromInvertedX = invertScale(scales.xScale, _mouseX, config.keyType)
-    const bisectLeft = d3.bisector(getKey).left
-    const dataEntryIndex = bisectLeft(dataObject.dataByKey, keyFromInvertedX)
-    const dataEntryForXPosition = dataObject.dataByKey[dataEntryIndex]
-    const dataEntryForXPositionPrev = dataObject.dataByKey[Math.max(dataEntryIndex - 1, 0)]
-
-    let nearestDataPoint = null
-
-    if (keyFromInvertedX) {
-      if ((keyFromInvertedX - dataEntryForXPositionPrev.key)
-          < (dataEntryForXPosition.key - keyFromInvertedX)) {
-        nearestDataPoint = dataEntryForXPositionPrev
-      } else {
-        nearestDataPoint = dataEntryForXPosition
-      }
-    }
-    return nearestDataPoint
-  }
-
   function addEvents () {
     const THROTTLE_DELAY = 20
     const throttledDispatch = throttle((...args) => {
@@ -431,13 +367,20 @@ export default function Chart (_container) {
         const [mouseX, mouseY] = d3.mouse(cache.panel.node())
         if (!dataObject.data) { return }
         const xPosition = mouseX
-        const dataPoint = getNearestDataPoint(xPosition)
+        const dataPoint = dataManager.getNearestDataPoint(xPosition, dataObject, scales, config.keyType)
 
         if (dataPoint) {
           const dataPointXPosition = scales.xScale(dataPoint[keys.DATA])
           throttledDispatch("mouseMovePanel", null, dataPoint, dataPointXPosition, mouseY)
         }
       })
+  }
+
+  function getEvents () {
+    if (!cache.svg) {
+      render()
+    }
+    return eventCollector
   }
 
   function on (...args) {
@@ -460,6 +403,6 @@ export default function Chart (_container) {
     setData,
     on,
     destroy,
-    events: eventCollector
+    getEvents
   }
 }

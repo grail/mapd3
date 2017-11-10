@@ -59,13 +59,14 @@ export default function Line (_container) {
         .y((d) => scales.yScale2(d[keys.VALUE]))
         .curve(d3.curveCatmullRom)
 
-    const lines = cache.svg.selectAll(".mark.line")
+    const lines = cache.svg.selectAll(".mark")
         .data(data.dataBySeries)
 
     lines.enter()
       .append("path")
-      .attr("class", () => ["mark", "line"].join(" "))
       .merge(lines)
+      .attr("class", "mark line")
+      .classed("y2-line", (d) => d[keys.GROUP] > 0)
       .attr("d", (d) => {
         if (d[keys.GROUP] === 0) {
           return seriesLine(d[keys.VALUES])
@@ -83,21 +84,22 @@ export default function Line (_container) {
     const seriesArea = d3.area()
         .x((d) => scales.xScale(d[keys.DATA]))
         .y0((d) => scales.yScale(d[keys.VALUE]))
-        .y1(() => config.chartHeight)
+        .y1(() => cache.chartHeight)
 
     const seriesArea2 = d3.area()
         .x((d) => scales.xScale(d[keys.DATA]))
         .y0((d) => scales.yScale2(d[keys.VALUE]))
-        .y1(() => config.chartHeight)
+        .y1(() => cache.chartHeight)
         .curve(d3.curveCatmullRom)
 
-    const areas = cache.svg.selectAll(".mark.area")
+    const areas = cache.svg.selectAll(".mark")
         .data(data.dataBySeries)
 
     areas.enter()
       .append("path")
-      .attr("class", () => ["mark", "area"].join(" "))
       .merge(areas)
+      .attr("class", "mark area")
+      .classed("y2-area", (d) => d[keys.GROUP] > 0)
       .attr("d", (d) => {
         if (d[keys.GROUP] === 0) {
           return seriesArea(d[keys.VALUES])
@@ -117,13 +119,13 @@ export default function Line (_container) {
         .y0((d) => scales.yScale(d[0]))
         .y1((d) => scales.yScale(d[1]))
 
-    const areas = cache.svg.selectAll(".mark.stacked-area")
+    const areas = cache.svg.selectAll(".mark")
         .data(data.stack(data.stackData))
 
     areas.enter()
       .append("path")
-      .attr("class", () => ["mark", "stacked-area"].join(" "))
       .merge(areas)
+      .attr("class", "mark stacked-area")
       .attr("d", seriesLine)
       .style("stroke", "none")
       .style("fill", (d) => scales.colorScale(d.key))

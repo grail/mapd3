@@ -25,7 +25,8 @@ export default function Axis (_container) {
     axisTransitionDuration: null,
     ease: null,
     grid: null,
-    hoverZoneSize: 30
+    hoverZoneSize: 30,
+    tickSpacing: 40
   }
 
   let scales = {
@@ -80,20 +81,33 @@ export default function Axis (_container) {
       }
     } else if (config.keyType === "string") {
       cache.xAxis.tickValues(scales.xScale.domain().filter((d, i) => !(i % config.xTickSkip)))
+    } else if (config.keyType === "number") {
+      if (config.xAxisFormat && config.xAxisFormat !== "auto") {
+        const formatter = d3.format(config.xAxisFormat)
+        cache.xAxis.tickFormat(formatter)
+      }
     }
 
     cache.yAxis = d3.axisLeft(scales.yScale)
-        .ticks(config.yTicks)
         .tickSize([config.tickSizes])
         .tickPadding(config.tickPadding)
         .tickFormat(d3.format(config.yAxisFormat))
 
+    if (Number.isInteger(config.yTicks)) {
+      cache.yAxis.ticks(config.yTicks)
+    } else {
+      cache.yAxis.ticks(Math.ceil(cache.chartHeight / config.tickSpacing))
+    }
+
     if (scales.hasSecondAxis) {
       cache.yAxis2 = d3.axisRight(scales.yScale2)
-          .ticks(config.y2Ticks)
           .tickSize([config.tickSizes])
           .tickPadding(config.tickPadding)
           .tickFormat(d3.format(config.y2AxisFormat))
+
+      if (!isNaN(config.y2Ticks)) {
+        cache.yAxis2.ticks(config.y2Ticks)
+      }
     }
   }
 
@@ -125,9 +139,16 @@ export default function Axis (_container) {
 
   function drawGridLines () {
     if (config.grid === "horizontal" || config.grid === "full") {
+      let ticks = null
+      if (Number.isInteger(config.yTicks)) {
+        ticks = config.yTicks
+      } else {
+        ticks = Math.ceil(cache.chartHeight / config.tickSpacing)
+      }
+
       cache.horizontalGridLines = cache.svg.select(".grid-lines-group")
           .selectAll("line.horizontal-grid-line")
-          .data(scales.yScale.ticks(config.yTicks))
+          .data(scales.yScale.ticks(ticks))
 
       cache.horizontalGridLines.enter()
         .append("line")
