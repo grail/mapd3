@@ -21,6 +21,7 @@
 </head><body>
 <div class="chart1"></div>
 <div class="chart2"></div>
+<div class="chart3"></div>
 <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js"></script> -->
 <script src="../dist/mapd3.js"></script>
 <script>
@@ -41,87 +42,89 @@ const data = dataManager.generateTestDataset()
 const colors = mapd3.colors.mapdColors
 const palette = data.series.map((d, i) => ({key: d.id, value: colors[i]}))
 
+const commonConfig = {
+  // common
+  width: 800,
+  height: 400,
+  margin: {
+    top: 32,
+    right: 70,
+    bottom: 64,
+    left: 70
+  },
+  keyType, // time, number, string
+  chartType, // line, area, stackedArea, bar, stackedBar
+
+  // intro animation
+  isAnimated: false,
+  animationDuration: 1500,
+
+  // scale
+  colorSchema: palette,
+  defaultColor: "skyblue",
+  xDomain: "auto",
+  yDomain: "auto",
+  y2Domain: "auto",
+
+  // axis
+  tickPadding: 5,
+  tickSizes: 8,
+  yTicks: "auto",
+  y2Ticks: "auto",
+  xTickSkip: "auto",
+  xAxisFormat: "auto",
+  yAxisFormat: "auto",
+  y2AxisFormat: ".2f",
+  grid: "horizontal",
+  axisTransitionDuration: 0,
+
+  // hover
+  dotRadius: 4,
+
+  // tooltip
+  mouseChaseDuration: 0,
+  tooltipHeight: 48,
+  tooltipWidth: 160,
+
+  // format
+  dateFormat: "%b %d, %Y",
+  numberFormat: ".2f",
+
+  // legend
+  legendXPosition: "auto",
+  legendYPosition: "auto",
+  legendTitle: "Dataset",
+  legendIsEnabled: true,
+
+  // binning
+  binningResolution: "1mo",
+  binningIsAuto: true,
+  binningToggles: ["10y", "1y", "1q", "1mo"],
+  binningIsEnabled: true,
+
+  // domain
+  xLock: false,
+  yLock: false,
+  y2Lock: false,
+  domainEditorIsEnabled: true,
+
+  // brush range
+  // brushRangeMin: "Jan 01, 2001",
+  // brushRangeMax: "Jan 02, 2002",
+  brushRangeIsEnabled: true,
+
+  // brush
+  brushIsEnabled: true,
+
+  // label
+  xLabel: "X Axis Label",
+  yLabel: "Y Axis Label",
+  y2Label: "Y2 Axis Label"
+}
+
 const chartNode1 = document.querySelector(".chart1")
 const chart1 = mapd3.Chart(chartNode1)
-  .setConfig({
-    // common
-    width: 800,
-    height: 400,
-    margin: {
-      top: 32,
-      right: 70,
-      bottom: 64,
-      left: 70
-    },
-    keyType, // time, number, string
-    chartType, // line, area, stackedArea, bar, stackedBar
-
-    // intro animation
-    isAnimated: false,
-    animationDuration: 1500,
-
-    // scale
-    colorSchema: palette,
-    defaultColor: "skyblue",
-    xDomain: "auto",
-    yDomain: "auto",
-    y2Domain: "auto",
-
-    // axis
-    tickPadding: 5,
-    tickSizes: 8,
-    yTicks: "auto",
-    y2Ticks: "auto",
-    xTickSkip: "auto",
-    xAxisFormat: "auto",
-    yAxisFormat: "auto",
-    y2AxisFormat: ".2f",
-    grid: "horizontal",
-    axisTransitionDuration: 0,
-
-    // hover
-    dotRadius: 4,
-
-    // tooltip
-    mouseChaseDuration: 0,
-    tooltipHeight: 48,
-    tooltipWidth: 160,
-
-    // format
-    dateFormat: "%b %d, %Y",
-    numberFormat: ".2f",
-
-    // legend
-    legendXPosition: "auto",
-    legendYPosition: "auto",
-    legendTitle: "Dataset",
-    legendIsEnabled: true,
-
-    // binning
-    binningResolution: "1mo",
-    binningIsAuto: true,
-    binningToggles: ["10y", "1y", "1q", "1mo"],
-    binningIsEnabled: true,
-
-    // domain
-    xLock: false,
-    yLock: false,
-    y2Lock: false,
-    domainEditorIsEnabled: true,
-
-    // brush range
-    // brushRangeMin: "Jan 01, 2001",
-    // brushRangeMax: "Jan 02, 2002",
-    brushRangeIsEnabled: true,
-
-    // brush
-    brushIsEnabled: true,
-
-    // label
-    xLabel: "X Axis Label",
-    yLabel: "Y Axis Label",
-    y2Label: "Y2 Axis Label"
-  })
+  .setConfig(commonConfig)
   .setData(data)
 
 chart1.getEvents()
@@ -137,6 +140,46 @@ chart1.getEvents()
   .onPanel("mouseOverPanel", (d) => console.log(d))
   .onPanel("mouseOutPanel", (d) => console.log(d))
   .onPanel("mouseMovePanel", (d) => console.log(d))
+
+const dataManager2 = mapd3.DataManager()
+  .setConfig({
+    keyType: "number",
+    range: [0, 1000],
+    pointCount: 200,
+    groupCount: 1,
+    lineCount: 4
+  })
+const data2 = dataManager2.generateTestDataset()
+
+const chartNode2 = document.querySelector(".chart2")
+mapd3.Chart(chartNode2)
+  .setConfig(commonConfig)
+  .setConfig({
+    chartType: "stackedArea",
+    keyType: "number",
+    y2Label: ""
+  })
+  .setData(data2)
+
+const dataManager3 = mapd3.DataManager()
+  .setConfig({
+    keyType: "string",
+    range: [0, 1000],
+    pointCount: 20,
+    groupCount: 1,
+    lineCount: 4
+  })
+const data3 = dataManager3.generateTestDataset()
+
+const chartNode3 = document.querySelector(".chart3")
+mapd3.Chart(chartNode3)
+  .setConfig(commonConfig)
+  .setConfig({
+    chartType: "stackedBar",
+    keyType: "string",
+    y2Label: ""
+  })
+  .setData(data3)
 
 </script>
 </body>
